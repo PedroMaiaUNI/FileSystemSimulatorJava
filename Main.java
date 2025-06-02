@@ -90,6 +90,9 @@ public class Main {
                     fs.saveFileSystem();
                     return;
 
+                case "exit!":
+                    return;
+
                 default:
                     System.out.println("Comando não reconhecido. Digite 'help' para ver os comandos.");
             }
@@ -127,6 +130,8 @@ public class Main {
     System.out.println("  list                   - Listar diretórios e arquivos atuais");
     System.out.println("  help                   - Mostrar comandos");
     System.out.println("  exit                   - Salvar e sair");
+    System.out.println("  exit!                  - Sair sem salvar");
+
 
     System.out.println("===============================");
 }

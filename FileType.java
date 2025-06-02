@@ -1,6 +1,4 @@
-import java.io.Serializable;
-
-public class FileType extends Entity implements Serializable{
+public class FileType extends Entity{
     private static final long serialVersionUID = 1L;
     
     private String content;

@@ -1,7 +1,6 @@
-import java.io.Serializable;
 import java.util.LinkedList;
 
-public class Directory extends Entity implements Serializable{
+public class Directory extends Entity{
     private static final long serialVersionUID = 1L;
 
     private LinkedList<FileType> files;
