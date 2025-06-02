@@ -35,16 +35,29 @@ public class FileSystemSimulator {
         return currentDir.getDirByName(name) != null;
     }
 
+    //para diretorio
+    public String getAbsolutePath(Directory dir) {
+        return getPath(dir);
+    }
+
+    //para arquivo
+    public String getAbsolutePath(FileType file, Directory parentDir) {
+        return getPath(parentDir) + "/" + file.getName();
+    }
+
     public String getCurrentPath() {
         return getPath(currentDir);
     }
+
+    //função recursiva de montagem do path
     private String getPath(Directory dir) {
         if (dir.getParent() == null) {
-            return "/" + dir.getName();
+            return "/";
         }
-        //mini-recursão até chegar no root
-        return getPath(dir.getParent()) + "/" + dir.getName();
+        String parentPath = getPath(dir.getParent());
+        return parentPath.equals("/") ? "/" + dir.getName() : parentPath + "/" + dir.getName();
     }
+
 
     private boolean isNameValid(String name) {
         if (name.contains("/") || name.contains("\\") || name.equals("..")) {
@@ -63,37 +76,46 @@ public class FileSystemSimulator {
     // FUNÇÕES ESSENCIAIS:
 
     //Arquivo:
-    public void makeFile(String fileName) {
-        if (!isNameValid(fileName)) return;
+    public boolean makeFile(String fileName) {
+        if (!isNameValid(fileName)) return false;
         if (fileExists(fileName)) {
             System.out.println("ERRO: Já existe um arquivo com esse nome.");
-            return; 
+            return false; 
         }
-        currentDir.addFiles(new FileType(fileName));
+        FileType file = new FileType(fileName);
+        currentDir.addFiles(file);
+        return true;
     }
 
-    public void deleteFile(String fileName){
-        currentDir.removeFileByName(fileName);
+    public boolean deleteFile(String fileName) {
+        FileType file = currentDir.getFileByName(fileName);
+        if (file != null) {
+            currentDir.removeFileByName(fileName);
+            return true;
+        }
+        return false;
+    }
 
-    }public void renameFile(String fileName, String newName) {
+    public boolean renameFile(String fileName, String newName) {
         FileType file = currentDir.getFileByName(fileName);
         if (file == null) {
-            System.out.println("Não existe um arquivo com esse nome.");
-            return;
+            System.out.println("ERRO: Não existe um arquivo com esse nome.");
+            return false;
         }
-        if (!isNameValid(newName)) return;
+        if (!isNameValid(newName)) return false;
         if (fileExists(newName)) {
             System.out.println("ERRO: Já existe um arquivo com esse nome.");
-            return;
+            return false;
         }
         file.setName(newName);
+        return true;
     }
 
     public void copyFile(String fileName){
         if (fileExists(fileName)){
             transferFile = currentDir.getFileByName(fileName).deepCopy();
         } else {
-            System.out.println("Não existe arquivo com esse nome");
+            System.out.println("ERRO: Não existe arquivo com esse nome");
         }
     }
 
@@ -102,72 +124,61 @@ public class FileSystemSimulator {
         deleteFile(fileName);
     }
 
-    public void pasteFile(){
+    public boolean pasteFile(){
         if(transferFile != null){
             String newName = transferFile.getName();
-            //quando eu usei ubuntu, era mais ou menos desse jeito
             while(fileExists(newName)){
                 newName += "(cópia)";
                 if(!isNameValid(newName)){
-                    return;
+                    return false;
                 }
             }
             FileType copy = transferFile.deepCopy();
             copy.setName(newName);
             currentDir.addFiles(copy);
+            return true;
         } else {
             System.out.println("A área de transferência está vazia!");
+            return false;
         }     
     }
 
-    public void writeFile(String name, String content) {
-        FileType file = currentDir.getFileByName(name);
-        if (file != null) {
-            file.setContent(content);
-        } else {
-            System.out.println("Arquivo não encontrado.");
-        }
-    }
-
-    public void readFile(String name) {
-        FileType file = currentDir.getFileByName(name);
-        if (file != null) {
-            System.out.println(file.getContent() == null ? "(vazio)" : file.getContent());
-        } else {
-            System.out.println("Arquivo não encontrado.");
-        }
-    }
-
     //Diretorio:
-    public void makeDirectory(String dirName) {
-        if (!isNameValid(dirName)) return;
+    public boolean makeDirectory(String dirName) {
+        if (!isNameValid(dirName)) return false;
         if (dirExists(dirName)) {
             System.out.println("ERRO: Já existe um diretório com esse nome.");
-            return;
+            return false;
         }
         Directory dir = new Directory(dirName);
         dir.setParent(currentDir);
         currentDir.addSubDirectories(dir);
+        return true;
     }
 
-    public void deleteDirectory(String dirName){
-        currentDir.removeDirByName(dirName);
+    public boolean deleteDirectory(String dirName) {
+        Directory dir = currentDir.getDirByName(dirName);
+        if (dir != null) {
+            currentDir.removeDirByName(dirName);
+            return true;
+        }
+        return false;
     }
 
-    public void renameDirectory(String dirName, String newName) {
+    public boolean renameDirectory(String dirName, String newName) {
         Directory dir = currentDir.getDirByName(dirName);
         if (dir == null) {
             System.out.println("ERRO: Não existe um diretório com esse nome.");
-            return;
+            return false;
         }
-        if (!isNameValid(newName)) return;
+        if (!isNameValid(newName)) return false;
         if (dirExists(newName)) {
             System.out.println("ERRO: Já existe um diretório com esse nome.");
-            return;
+            return false;
         }
         dir.setName(newName);
+        return true;
     }
-
 
     public void copyDirectory(String dirName){
         if (dirExists(dirName)){
@@ -182,21 +193,23 @@ public class FileSystemSimulator {
         deleteDirectory(dirName);
     }
 
-    public void pasteDirectory() {
+    public boolean pasteDirectory() {
         if (transferDir != null) {
             String newName = transferDir.getName();
             while (dirExists(newName)) {
                 newName += "(cópia)";
                 if(!isNameValid(newName)){
-                    return;
+                    return false;
                 }
             }
             Directory copy = transferDir.deepCopy();
             copy.setName(newName);
             copy.setParent(currentDir);
             currentDir.addSubDirectories(copy);
+            return true;
         } else {
             System.out.println("A área de transferência está vazia!");
+            return false;
         }
     }
 
@@ -208,7 +221,6 @@ public class FileSystemSimulator {
             System.out.println("[FILE] " + file.getName() + " (Tamanho: " + (file.getContent() == null ? 0 : file.getContent().length()) + " caracteres)");
         }
     }
-
 
     public void changeDirectory(String name) {
         if (name == null || name.isEmpty()) {
@@ -238,7 +250,6 @@ public class FileSystemSimulator {
                     if (tempDir.getParent() != null) {
                         tempDir = tempDir.getParent();
                     } else {
-                        // no cmd do windows nenhum erro é retornado, então deixarei assim
                         return;
                     }
                 } else {
@@ -253,7 +264,6 @@ public class FileSystemSimulator {
             }
             currentDir = tempDir;
         } else {
-            // voltando ao diretorio-pai
             if (name.equals("..")) {
                 if (currentDir.getParent() != null) {
                     currentDir = currentDir.getParent();
@@ -268,6 +278,7 @@ public class FileSystemSimulator {
             }
         }
     }
+
 
 
     //funções para manipular o arquivo (salvar e carregar):
@@ -292,5 +303,26 @@ public class FileSystemSimulator {
 
 
     //OUTRAS FUNCIONALIDADES:
-    //se isso estiver vazio depois, desculpa...
+
+    //por enquanto bem básico, ela só existe mesmo
+    public boolean writeFile(String name, String content) {
+        FileType file = currentDir.getFileByName(name);
+        if (file != null) {
+            file.setContent(content);
+            return true;
+        } else {
+            System.out.println("Arquivo não encontrado.");
+            return false;
+        }
+    }
+
+    public void readFile(String name) {
+        FileType file = currentDir.getFileByName(name);
+        if (file != null) {
+            System.out.println(file.getContent() == null ? "(vazio)" : file.getContent());
+        } else {
+            System.out.println("Arquivo não encontrado.");
+        }
+    }
+
 }
