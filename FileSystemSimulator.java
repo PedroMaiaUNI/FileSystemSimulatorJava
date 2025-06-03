@@ -7,7 +7,10 @@ import java.time.format.DateTimeFormatter;
 
 public class FileSystemSimulator {
     private static final int MAX_PATH_LENGTH = 300;
-    private static final String SAVE_FILE = "filesystem.dat";
+    private static final int MAX_SIZE = 500;
+    private static final String SAVE_FILE = "filesystem.moe"; //maia official extension
+
+    private int currentSize = 0;
 
     public int clipboardStatus = 0;
     private FileType transferFile = null;
@@ -26,6 +29,10 @@ public class FileSystemSimulator {
 
     public Directory getCurrentDir() {
         return currentDir;
+    }
+    
+    public int getCurrentSize() {
+        return currentSize;
     }
 
     public FileType getTransferFile() {
@@ -99,11 +106,16 @@ public class FileSystemSimulator {
             System.out.println("ERRO: O nome do arquivo deve conter uma extensão.");
             return false;
         }
+        if(currentSize + 1 > MAX_SIZE){
+            System.out.println("ERRO: O sistema atingiu o limite de tamanho!");
+            return false;
+        }
         if (fileExists(fileName)) {
             System.out.println("ERRO: Já existe um arquivo com esse nome.");
             return false; 
         }
         FileType file = new FileType(fileName);
+        currentSize += 1;
         currentDir.addFiles(file);
         return true;
     }
@@ -111,6 +123,7 @@ public class FileSystemSimulator {
     public boolean deleteFile(String fileName) {
         FileType file = currentDir.getFileByName(fileName);
         if (file != null) {
+            currentSize -= file.getSize();
             currentDir.removeFileByName(fileName);
             return true;
         }
@@ -120,7 +133,7 @@ public class FileSystemSimulator {
     public boolean renameFile(String fileName, String newName) {
         FileType file = currentDir.getFileByName(fileName);
         if (file == null) {
-            System.out.println("ERRO: Não existe um arquivo com esse nome.");
+            System.out.println("ERRO: Não existe um arquivo com esse nome. Lembre-se de incluir a extensão");
             return false;
         }
         if (!isNameValid(newName)) return false;
@@ -157,7 +170,12 @@ public class FileSystemSimulator {
                 deleteFile(newName);
             }
             FileType copy = transferFile.deepCopy();
+            if(currentSize + copy.getSize() > MAX_SIZE){
+                System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre.");
+                return false;
+            }
             currentDir.addFiles(copy);
+            currentSize += copy.getSize();
             return true;
         } else {
             System.out.println("A área de transferência está vazia!");
@@ -181,6 +199,7 @@ public class FileSystemSimulator {
     public boolean deleteDirectory(String dirName) {
         Directory dir = currentDir.getDirByName(dirName);
         if (dir != null) {
+            currentSize -= dir.getSize();
             currentDir.removeDirByName(dirName);
             return true;
         }
@@ -205,7 +224,7 @@ public class FileSystemSimulator {
     public void copyDirectory(String dirName){
         if (dirExists(dirName)){
             clipboardStatus = 2;
-            transferDir = currentDir.getDirByName(dirName);
+            transferDir = currentDir.getDirByName(dirName).deepCopy();
         } else {
             System.out.println("Não existe diretório com esse nome");
         }
@@ -223,8 +242,13 @@ public class FileSystemSimulator {
                 deleteDirectory(newName);
             }
             Directory copy = transferDir.deepCopy();
+            if(currentSize + copy.getSize() > MAX_SIZE){
+                System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre.");
+                return false;
+            }
             copy.setParent(currentDir);
             currentDir.addSubDirectories(copy);
+            currentSize += copy.getSize();
             return true;
         } else {
             System.out.println("A área de transferência está vazia!");
@@ -236,27 +260,32 @@ public class FileSystemSimulator {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         System.out.println("----------------------------------------------------------------------------");
-        System.out.printf("%-10s | %-25s | %-10s | %-20s\n", "", "NOME", "EXTENSÃO", "DATA DE CRIAÇÃO");
+        System.out.printf("%-10s | %-25s | %-10s | %-10s | %-20s\n", "", "NOME", "EXTENSÃO", "TAMANHO", "DATA DE CRIAÇÃO");
         System.out.println("----------------------------------------------------------------------------");
 
         for (Directory subDir : currentDir.getSubDirectories()) {
-            System.out.printf("%-10s | %-25s | %-10s | %-20s\n",
+            System.out.printf("%-10s | %-25s | %-10s | %-10s | %-20s\n",
                 "[DIR]",
                 subDir.getName(),
                 "",
+                subDir.getSize(),
                 subDir.getCreationDate().format(formatter));
         }
 
         for (FileType file : currentDir.getFiles()) {
             String ext = file.getExtension();
-            System.out.printf("%-10s | %-25s | %-10s | %-20s\n",
+            System.out.printf("%-10s | %-25s | %-10s | %-10s | %-20s\n",
                  "[FILE]",
-                file.getName().substring(0, file.getName().lastIndexOf(".")),
+                file.getMainName(),
                 ext,
+                file.getSize(),
                 file.getCreationDate().format(formatter));
         }
 
         System.out.println("----------------------------------------------------------------------------");
+
+        System.out.println("TAMANHO OCUPADO EM DISCO: ");
+        System.out.println("[" + currentSize + "/" + MAX_SIZE + "]");
     }
 
     public void changeDirectory(String name) {
@@ -300,7 +329,6 @@ public class FileSystemSimulator {
                     }
                 }
             }
-            //principal razão de getDirByName não ser deepCopy mas sim referencia:
             currentDir = tempDir;
         } else {
             //voltando ao diretorio-pai, padrao windows
@@ -319,8 +347,6 @@ public class FileSystemSimulator {
             }
         }
     }
-
-
 
     //funções para manipular o arquivo (salvar e carregar):
 
@@ -342,22 +368,21 @@ public class FileSystemSimulator {
         }
     }
 
-
     //OUTRAS FUNCIONALIDADES:
 
     //por enquanto bem básico, ela só existe mesmo
     public boolean writeFile(String name, String content) {
-        FileType fileToWrite = null;
-        for(FileType file : currentDir.getFiles()){
-            if(file.getName().equals(name)){
-                fileToWrite = file;
-            }
-        }
+        FileType fileToWrite = currentDir.getFileByName(name);
         if (fileToWrite != null) {
+            if(currentSize + content.length() > MAX_SIZE){
+                System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre");
+                return false;
+            }
+            currentSize += content.length();
             fileToWrite.setContent(content);
             return true;
         } else {
-            System.out.println("Arquivo não encontrado.");
+            System.out.println("Arquivo não encontrado. Lembre-se de incluir a extensão");
             return false;
         }
     }
@@ -367,15 +392,19 @@ public class FileSystemSimulator {
         if (file != null) {
             System.out.println(file.getContent() == null ? "(vazio)" : file.getContent());
         } else {
-            System.out.println("Arquivo não encontrado.");
+            System.out.println("Arquivo não encontrado. Lembre-se de incluir a extensão");
         }
     }
 
-    //duplicar, para quando o usuario realmente quiser uma copia
+    //duplicar, para quando o usuario realmente quiser uma copia no mesmo diretorio
     public FileType duplicateFile(String fileName) {
         FileType dupFile = currentDir.getFileByName(fileName).deepCopy();
         if (dupFile == null) {
-            System.out.println("ERRO: Arquivo não encontrado.");
+            System.out.println("ERRO: Arquivo não encontrado. Lembre-se de incluir a extensão");
+        }
+        if(currentSize + dupFile.getSize() > MAX_SIZE){
+            System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre.");
+            return null;
         }
         int copyCount = 0;
         for(FileType file : currentDir.getFiles()){
@@ -384,8 +413,9 @@ public class FileSystemSimulator {
             }
         }
         if(copyCount > 0){
-            dupFile.setName(dupFile.getName() + "(" + copyCount + ")");
+            dupFile.setMainName(dupFile.getMainName() + "(" + copyCount + ")");
             currentDir.addFiles(dupFile);
+            currentSize += dupFile.getSize();
         }
         return dupFile;
     }
@@ -394,6 +424,10 @@ public class FileSystemSimulator {
         Directory dupDir = currentDir.getDirByName(dirName).deepCopy();
         if (dupDir == null) {
             System.out.println("ERRO: Diretorio não encontrado.");
+        }
+        if(currentSize + dupDir.getSize() > MAX_SIZE){
+            System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre");
+            return null;
         }
         int copyCount = 0;
         for(Directory dir : currentDir.getSubDirectories()){
@@ -405,6 +439,7 @@ public class FileSystemSimulator {
             dupDir.setName(dupDir.getName() + "(" + copyCount + ")");
             dupDir.setParent(currentDir);
             currentDir.addSubDirectories(dupDir);
+            currentSize += dupDir.getSize();
         }
         return dupDir;
     }

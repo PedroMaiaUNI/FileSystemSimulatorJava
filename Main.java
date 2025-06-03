@@ -128,11 +128,10 @@ public class Main {
     //Preferi fazer desse jeito para deixar a função main mais limpa e fácil de ler
 
     private static void handleCreateFile(FileSystemSimulator fs, String fileName, Journal journal) {
-        if (fileName.isEmpty()) {
+        if(fileName.isEmpty()) {
             System.out.println("ERRO: Nome do arquivo não pode estar vazio.");
             return;
         }
-        
         if (fs.makeFile(fileName)) {
             journal.log("CREATE_FILE", fileName);
         }
@@ -182,7 +181,7 @@ public class Main {
             }
 
         } else {
-            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado. Lembre-se de incluir a extensão para arquivos");
         }
     }
 
@@ -212,7 +211,7 @@ public class Main {
             }
 
         } else {
-            System.out.println("ERRO: Arquivo ou diretório '" + oldName + "' não encontrado.");
+            System.out.println("ERRO: Arquivo ou diretório '" + oldName + "' não encontrado. Lembre-se de incluir a extensão para arquivos");
         }
     }
 
@@ -224,7 +223,7 @@ public class Main {
         }
         
         if (!fs.fileExists(fileName)) {
-            System.out.println("ERRO: Arquivo não encontrado.");
+            System.out.println("ERRO: Arquivo não encontrado. Lembre-se de incluir a extensão.");
             return;
         }
 
@@ -263,7 +262,7 @@ public class Main {
             System.out.println("Diretório '" + name + "' copiado para a área de transferência.");
             return;
         } else {
-            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado. Lembre-se de incluir a extensão para arquivos.");
         }
     }
 
@@ -282,7 +281,7 @@ public class Main {
             journal.log("CUT_DIR", name);
             System.out.println("Diretório '" + name + "' recortado para a área de transferência.");
         } else {
-            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado. Lembre-se de incluir a extensão para arquivos.");
         }
     }
 
@@ -307,7 +306,6 @@ public class Main {
                 System.out.println("Operação cancelada.");
                 return;
             }
-            journal.log("DELETE_FILE", transferName);
         }
         if (fs.pasteFile()) {
             journal.log("PASTE_FILE", transferName);
@@ -323,7 +321,6 @@ public class Main {
                 System.out.println("Operação cancelada.");
                 return;
             }
-            journal.log("DELETE_DIR", transferName);
         }
         if (fs.pasteDirectory()) {
             journal.log("PASTE_DIR", transferName);
@@ -350,7 +347,7 @@ public class Main {
                 System.out.println("Diretório duplicado como '" + duplicated.getName() + "'.");
             }
         } else {
-            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado. Lembre-se de incluir a extensão para arquivos.");
         }
     }
 

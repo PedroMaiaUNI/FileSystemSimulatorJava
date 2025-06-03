@@ -114,4 +114,15 @@ public class Directory extends Entity{
 
         return copy;
     }
+
+    public int getSize(){
+        int dirSize = 0;
+        for(FileType file : getFiles()){
+            dirSize += file.getSize();
+        }
+        for(Directory dir : getSubDirectories()){
+            dirSize += dir.getSize();
+        }
+        return dirSize;
+    }
 }

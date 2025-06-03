@@ -6,9 +6,19 @@ public class FileType extends Entity{
     private String content;
     private LocalDateTime creationDate;
 
+    private int size = 1;
+
     public FileType(String name) {
         super(name);
         this.creationDate = LocalDateTime.now();
+    }
+
+    public void setMainName(String mainName){
+        setName(mainName + "." + getExtension().toLowerCase());
+    }
+
+    public String getMainName(){
+        return this.name.substring(0, getName().lastIndexOf("."));
     }
 
     public String getContent() {
@@ -16,7 +26,12 @@ public class FileType extends Entity{
     }
 
     public void setContent(String content) {
+        this.size = content != null ? content.length() + 1 : 1; 
         this.content = content;
+    }
+
+    public int getSize() {
+        return size;
     }
 
     public FileType deepCopy() {
