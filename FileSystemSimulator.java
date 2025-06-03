@@ -43,6 +43,15 @@ public class FileSystemSimulator {
         return transferDir;
     }
 
+    public void setFullSize(){
+        for(FileType file : currentDir.getFiles()){
+            currentSize += file.getSize();
+        }
+        for(Directory dir : currentDir.getSubDirectories()){
+            currentSize += dir.getSize();
+        }
+    }
+
     // FUNÇÕES AUXILIARES:
 
     public boolean fileExists(String name) {

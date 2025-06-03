@@ -12,6 +12,7 @@ public class Main {
         //não faz muito sentido pra mim isso ser salvo 
         //se nem no ruindows isso acontece
         fs.clipboardStatus = 0;
+        fs.setFullSize();
 
         printStartupMessage();
 
@@ -67,11 +68,9 @@ public class Main {
                     break;
                 case "exit":
                     handleExit(journal, fs);
-                    journal.clear();
                     return;
                 case "exit!":
-                    handleForceExit();
-                    journal.clear();
+                    handleForceExit(journal);
                     return;
                 default:
                     handleUnknownCommand();
@@ -367,10 +366,12 @@ public class Main {
     private static void handleExit(Journal journal, FileSystemSimulator fs) {
         System.out.println("Salvando sistema...");
         journal.close();
+        journal.clear();
         fs.saveFileSystem();
     }
 
-    private static void handleForceExit() {
+    private static void handleForceExit(Journal journal) {
+        journal.clear();
         System.out.println("Saindo sem salvar...");
     }
 
