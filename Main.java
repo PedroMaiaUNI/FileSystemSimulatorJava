@@ -48,7 +48,7 @@ public class Main {
                     handleCopy(fs, argsPart, journal);
                     break;
                 case "mv":
-                    handleCut(fs, argsPart);
+                    handleCut(fs, argsPart, journal);
                     break;
                 case "paste":
                     handlePaste(fs, sc, journal);
@@ -267,7 +267,7 @@ public class Main {
         }
     }
 
-    private static void handleCut(FileSystemSimulator fs, String name) {
+    private static void handleCut(FileSystemSimulator fs, String name, Journal journal) {
         if (name.isEmpty()) {
             System.out.println("ERRO: Nome não pode estar vazio.");
             return;
@@ -275,9 +275,11 @@ public class Main {
 
         if (fs.fileExists(name)) {
             fs.cutFile(name);
+            journal.log("CUT_FILE", name);
             System.out.println("Arquivo '" + name + "' recortado para a área de transferência.");
         } else if (fs.dirExists(name)) {
             fs.cutDirectory(name);
+            journal.log("CUT_DIR", name);
             System.out.println("Diretório '" + name + "' recortado para a área de transferência.");
         } else {
             System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
@@ -338,13 +340,13 @@ public class Main {
         if (fs.fileExists(name)) {
             FileType duplicated = fs.duplicateFile(name);
             if (duplicated != null) {
-                journal.log("DUPLICATE_FILE", duplicated.getName());
+                journal.log("DUPLICATE_FILE", name);
                 System.out.println("Arquivo duplicado como '" + duplicated.getName() + "'.");
             }
         } else if (fs.dirExists(name)) {
             Directory duplicated = fs.duplicateDirectory(name);
             if (duplicated != null) {
-                journal.log("DUPLICATE_DIR", duplicated.getName());
+                journal.log("DUPLICATE_DIR", name);
                 System.out.println("Diretório duplicado como '" + duplicated.getName() + "'.");
             }
         } else {

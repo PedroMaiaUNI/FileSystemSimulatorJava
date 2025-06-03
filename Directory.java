@@ -46,13 +46,11 @@ public class Directory extends Entity{
         return creationDate;
     }
 
-    //decidi que usar deepcopy seria mais seguro do que devolver uma referencia direta
-    //apenas um dos usos (writeFile) exigia a referencia de fato
     public FileType getFileByName(String fileName){
         FileType returnFile = null;
         for(FileType file : files){
             if(file.getName().equals(fileName)){
-                returnFile = file.deepCopy();
+                returnFile = file;
                 break;
             }
         }
@@ -74,7 +72,6 @@ public class Directory extends Entity{
         files.remove(removeFile);
     }
 
-    //porém aqui fica do mesmo jeito por causa de changeDirectory
     public Directory getDirByName(String dirName){
         Directory returnDir = null;
         for(Directory dir : subDirectories){

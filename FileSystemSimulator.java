@@ -251,7 +251,7 @@ public class FileSystemSimulator {
             String ext = file.getExtension();
             System.out.printf("%-10s | %-25s | %-10s | %-20s\n",
                  "[FILE]",
-                file.getName(), // TODO: REMOVER EXTENSÃO
+                file.getName().substring(0, file.getName().lastIndexOf(".")),
                 ext,
                 file.getCreationDate().format(formatter));
         }
@@ -373,7 +373,7 @@ public class FileSystemSimulator {
 
     //duplicar, para quando o usuario realmente quiser uma copia
     public FileType duplicateFile(String fileName) {
-        FileType dupFile = currentDir.getFileByName(fileName);
+        FileType dupFile = currentDir.getFileByName(fileName).deepCopy();
         if (dupFile == null) {
             System.out.println("ERRO: Arquivo não encontrado.");
         }

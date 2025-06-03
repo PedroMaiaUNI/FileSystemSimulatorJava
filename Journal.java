@@ -120,12 +120,20 @@ public class Journal {
                     fs.pasteFile();
                     break;
                 }
+                case "CUT_FILE":{
+                    fs.cutFile(detail);
+                    break;
+                }
                 case "COPY_DIR":{
                     fs.copyDirectory(detail);
                     break;
                 }
                 case "PASTE_DIR":{
                     fs.pasteDirectory();
+                    break;
+                }
+                case "CUT_DIR":{
+                    fs.cutDirectory(detail);
                     break;
                 }
                 case "DUPLICATE_FILE":{
