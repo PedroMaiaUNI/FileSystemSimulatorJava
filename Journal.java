@@ -57,8 +57,6 @@ public class Journal {
 
     private void processLogLine(FileSystemSimulator fs, String line) {
         try {
-            
-            // Formato da linha: [2025-01-02 12:06:50] CREATE_DIR | /pasta1
             String[] parts = line.split(" \\| ");
             if (parts.length < 2) {
                 System.out.println("Linha do journal mal formatada: " + line);
@@ -73,55 +71,74 @@ public class Journal {
                 System.out.println("Formato de timestamp inválido: " + line);
                 return;
             }
-            
+
             String action = actionPart.substring(lastBracket + 1).trim();
 
             System.out.println("Recuperando: " + action + " -> " + detail);
 
             switch (action) {
                 case "CREATE_FILE":
-                    String fileName = detail.substring(detail.lastIndexOf('/') + 1);
-                    fs.makeFile(fileName);
+                    fs.makeFile(detail);
                     break;
                 case "DELETE_FILE":
-                    String deleteFileName = detail.substring(detail.lastIndexOf('/') + 1);
-                    fs.deleteFile(deleteFileName);
+                    fs.deleteFile(detail);
                     break;
                 case "CREATE_DIR":
-                    String dirName = detail.substring(detail.lastIndexOf('/') + 1);
-                    fs.makeDirectory(dirName);
+                    fs.makeDirectory(detail);
                     break;
                 case "DELETE_DIR":
-                    String deleteDirName = detail.substring(detail.lastIndexOf('/') + 1);
-                    fs.deleteDirectory(deleteDirName);
+                    fs.deleteDirectory(detail);
                     break;
                 case "RENAME_FILE": {
                     String[] renameParts = detail.split(" -> ");
                     if (renameParts.length == 2) {
-                        String oldName = renameParts[0].substring(renameParts[0].lastIndexOf('/') + 1);
-                        String newName = renameParts[1].substring(renameParts[1].lastIndexOf('/') + 1);
-                        fs.renameFile(oldName, newName);
+                        fs.renameFile(renameParts[0].trim(), renameParts[1].trim());
                     }
                     break;
                 }
                 case "RENAME_DIR": {
                     String[] renameParts = detail.split(" -> ");
                     if (renameParts.length == 2) {
-                        String oldName = renameParts[0].substring(renameParts[0].lastIndexOf('/') + 1);
-                        String newName = renameParts[1].substring(renameParts[1].lastIndexOf('/') + 1);
-                        fs.renameDirectory(oldName, newName);
+                        fs.renameDirectory(renameParts[0].trim(), renameParts[1].trim());
                     }
                     break;
                 }
                 case "WRITE_FILE": {
                     String[] writeParts = detail.split(" -> ");
                     if (writeParts.length == 2) {
-                        String fileName2 = writeParts[0].substring(writeParts[0].lastIndexOf('/') + 1);
+                        String file = writeParts[0].trim();
                         String content = writeParts[1];
-                        fs.writeFile(fileName2, content);
+                        fs.writeFile(file, content);
                     }
                     break;
                 }
+                case "COPY_FILE":{
+                    fs.copyFile(detail);
+                    break;
+                }
+                case "PASTE_FILE":{
+                    fs.pasteFile();
+                    break;
+                }
+                case "COPY_DIR":{
+                    fs.copyDirectory(detail);
+                    break;
+                }
+                case "PASTE_DIR":{
+                    fs.pasteDirectory();
+                    break;
+                }
+                case "DUPLICATE_FILE":{
+                    fs.duplicateFile(detail);
+                    break;
+                }
+                case "DUPLICATE_DIR":{
+                    fs.duplicateDirectory(detail);
+                    break;
+                }
+                case "CHANGE_DIR":
+                    fs.changeDirectory(detail);
+                    break;
                 default:
                     System.out.println("Ação desconhecida no journal: " + action);
             }
@@ -130,4 +147,5 @@ public class Journal {
             System.out.println("ERRO: " + e.getMessage());
         }
     }
+
 }

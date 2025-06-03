@@ -1,4 +1,5 @@
 import java.util.LinkedList;
+import java.time.LocalDateTime;
 
 public class Directory extends Entity{
     private static final long serialVersionUID = 1L;
@@ -6,12 +7,15 @@ public class Directory extends Entity{
     private LinkedList<FileType> files;
     private LinkedList<Directory> subDirectories;
     private Directory parentDirectory;
+    private LocalDateTime creationDate;
 
     public Directory(String name) {
         super(name);
 
         this.files = new LinkedList<>();
         this.subDirectories = new LinkedList<>();
+        this.creationDate = LocalDateTime.now();
+
     }
 
     public LinkedList<FileType> getFiles() {
@@ -38,11 +42,17 @@ public class Directory extends Entity{
         this.parentDirectory = parentDir;
     }
 
+    public LocalDateTime getCreationDate() {
+        return creationDate;
+    }
+
+    //decidi que usar deepcopy seria mais seguro do que devolver uma referencia direta
+    //apenas um dos usos (writeFile) exigia a referencia de fato
     public FileType getFileByName(String fileName){
         FileType returnFile = null;
         for(FileType file : files){
             if(file.getName().equals(fileName)){
-                returnFile = file;
+                returnFile = file.deepCopy();
                 break;
             }
         }
@@ -64,6 +74,7 @@ public class Directory extends Entity{
         files.remove(removeFile);
     }
 
+    //porém aqui fica do mesmo jeito por causa de changeDirectory
     public Directory getDirByName(String dirName){
         Directory returnDir = null;
         for(Directory dir : subDirectories){

@@ -3,11 +3,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.format.DateTimeFormatter;
 
 public class FileSystemSimulator {
     private static final int MAX_PATH_LENGTH = 300;
     private static final String SAVE_FILE = "filesystem.dat";
 
+    public int clipboardStatus = 0;
     private FileType transferFile = null;
     private Directory transferDir = null;
 
@@ -26,6 +28,14 @@ public class FileSystemSimulator {
         return currentDir;
     }
 
+    public FileType getTransferFile() {
+        return transferFile;
+    }
+
+    public Directory getTransferDir() {
+        return transferDir;
+    }
+
     // FUNÇÕES AUXILIARES:
 
     public boolean fileExists(String name) {
@@ -33,6 +43,15 @@ public class FileSystemSimulator {
     }
     public boolean dirExists(String name) {
         return currentDir.getDirByName(name) != null;
+    }
+
+    public boolean hasExtension(String fileName) {
+        //verificar se tem extensão, vai basicamente só ver se tem um ponto separando nome e extensão
+        //se não tiver é erro
+        if (fileName == null) return false;
+        int dotIndex = fileName.lastIndexOf('.');
+        //por segurança, não pode ser o ultimo caractere
+        return dotIndex > 0 && dotIndex < fileName.length() - 1;
     }
 
     //para diretorio
@@ -58,14 +77,12 @@ public class FileSystemSimulator {
         return parentPath.equals("/") ? "/" + dir.getName() : parentPath + "/" + dir.getName();
     }
 
-
     private boolean isNameValid(String name) {
-        if (name.contains("/") || name.contains("\\") || name.equals("..")) {
-            System.out.println("ERRO: Caracteres inválidos ('/'. '\\' ou '..').");
+        if (name.contains("/") || name.contains("\\") || name.contains("..")) {
+            System.out.println("ERRO: Caracteres inválidos ('/'. '\\', ou '..')");
             return false;
         }
-        // +5 pelo root/
-        int pathLength = getCurrentPath().length() + name.length() + 5; 
+        int pathLength = getCurrentPath().length() + name.length() + 1; 
         if (pathLength > MAX_PATH_LENGTH) {
             System.out.println("ERRO: O caminho completo excede o limite de " + MAX_PATH_LENGTH + " caracteres.");
             return false;
@@ -78,6 +95,10 @@ public class FileSystemSimulator {
     //Arquivo:
     public boolean makeFile(String fileName) {
         if (!isNameValid(fileName)) return false;
+        if (!hasExtension(fileName)) {
+            System.out.println("ERRO: O nome do arquivo deve conter uma extensão.");
+            return false;
+        }
         if (fileExists(fileName)) {
             System.out.println("ERRO: Já existe um arquivo com esse nome.");
             return false; 
@@ -103,6 +124,10 @@ public class FileSystemSimulator {
             return false;
         }
         if (!isNameValid(newName)) return false;
+        if (!hasExtension(newName)) {
+            System.out.println("ERRO: O novo nome do arquivo deve conter uma extensão.");
+            return false;
+        }
         if (fileExists(newName)) {
             System.out.println("ERRO: Já existe um arquivo com esse nome.");
             return false;
@@ -113,6 +138,7 @@ public class FileSystemSimulator {
 
     public void copyFile(String fileName){
         if (fileExists(fileName)){
+            clipboardStatus = 1;
             transferFile = currentDir.getFileByName(fileName).deepCopy();
         } else {
             System.out.println("ERRO: Não existe arquivo com esse nome");
@@ -127,14 +153,10 @@ public class FileSystemSimulator {
     public boolean pasteFile(){
         if(transferFile != null){
             String newName = transferFile.getName();
-            while(fileExists(newName)){
-                newName += "(cópia)";
-                if(!isNameValid(newName)){
-                    return false;
-                }
+            if(fileExists(newName)){
+                deleteFile(newName);
             }
             FileType copy = transferFile.deepCopy();
-            copy.setName(newName);
             currentDir.addFiles(copy);
             return true;
         } else {
@@ -182,7 +204,8 @@ public class FileSystemSimulator {
 
     public void copyDirectory(String dirName){
         if (dirExists(dirName)){
-            transferDir = currentDir.getDirByName(dirName).deepCopy();
+            clipboardStatus = 2;
+            transferDir = currentDir.getDirByName(dirName);
         } else {
             System.out.println("Não existe diretório com esse nome");
         }
@@ -196,14 +219,10 @@ public class FileSystemSimulator {
     public boolean pasteDirectory() {
         if (transferDir != null) {
             String newName = transferDir.getName();
-            while (dirExists(newName)) {
-                newName += "(cópia)";
-                if(!isNameValid(newName)){
-                    return false;
-                }
+            if(dirExists(newName)) {
+                deleteDirectory(newName);
             }
             Directory copy = transferDir.deepCopy();
-            copy.setName(newName);
             copy.setParent(currentDir);
             currentDir.addSubDirectories(copy);
             return true;
@@ -213,13 +232,31 @@ public class FileSystemSimulator {
         }
     }
 
-    public void listDirectory(){
-        for (Directory dir : currentDir.getSubDirectories()) {
-            System.out.println("[DIR]  " + dir.getName() + "/ (Subdiretorios: " + dir.getSubDirectories().size() + ", Arquivos: " + dir.getFiles().size() + ")");
+    public void listDirectory() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        System.out.println("----------------------------------------------------------------------------");
+        System.out.printf("%-10s | %-25s | %-10s | %-20s\n", "", "NOME", "EXTENSÃO", "DATA DE CRIAÇÃO");
+        System.out.println("----------------------------------------------------------------------------");
+
+        for (Directory subDir : currentDir.getSubDirectories()) {
+            System.out.printf("%-10s | %-25s | %-10s | %-20s\n",
+                "[DIR]",
+                subDir.getName(),
+                "",
+                subDir.getCreationDate().format(formatter));
         }
+
         for (FileType file : currentDir.getFiles()) {
-            System.out.println("[FILE] " + file.getName() + " (Tamanho: " + (file.getContent() == null ? 0 : file.getContent().length()) + " caracteres)");
+            String ext = file.getExtension();
+            System.out.printf("%-10s | %-25s | %-10s | %-20s\n",
+                 "[FILE]",
+                file.getName(), // TODO: REMOVER EXTENSÃO
+                ext,
+                file.getCreationDate().format(formatter));
         }
+
+        System.out.println("----------------------------------------------------------------------------");
     }
 
     public void changeDirectory(String name) {
@@ -229,6 +266,7 @@ public class FileSystemSimulator {
         }
 
         if (name.contains("/")) {
+            //tratando de buscas que incluem path
             Directory startDir;
             if (name.startsWith("/")) {
                 // desde a root
@@ -262,13 +300,16 @@ public class FileSystemSimulator {
                     }
                 }
             }
+            //principal razão de getDirByName não ser deepCopy mas sim referencia:
             currentDir = tempDir;
         } else {
+            //voltando ao diretorio-pai, padrao windows
             if (name.equals("..")) {
                 if (currentDir.getParent() != null) {
                     currentDir = currentDir.getParent();
                 }
             } else {
+            //buscando nos subdiretorios
                 Directory dir = currentDir.getDirByName(name);
                 if (dir != null) {
                     currentDir = dir;
@@ -306,9 +347,14 @@ public class FileSystemSimulator {
 
     //por enquanto bem básico, ela só existe mesmo
     public boolean writeFile(String name, String content) {
-        FileType file = currentDir.getFileByName(name);
-        if (file != null) {
-            file.setContent(content);
+        FileType fileToWrite = null;
+        for(FileType file : currentDir.getFiles()){
+            if(file.getName().equals(name)){
+                fileToWrite = file;
+            }
+        }
+        if (fileToWrite != null) {
+            fileToWrite.setContent(content);
             return true;
         } else {
             System.out.println("Arquivo não encontrado.");
@@ -325,4 +371,41 @@ public class FileSystemSimulator {
         }
     }
 
+    //duplicar, para quando o usuario realmente quiser uma copia
+    public FileType duplicateFile(String fileName) {
+        FileType dupFile = currentDir.getFileByName(fileName);
+        if (dupFile == null) {
+            System.out.println("ERRO: Arquivo não encontrado.");
+        }
+        int copyCount = 0;
+        for(FileType file : currentDir.getFiles()){
+            if(file.getName().equals(fileName)){
+                copyCount++;
+            }
+        }
+        if(copyCount > 0){
+            dupFile.setName(dupFile.getName() + "(" + copyCount + ")");
+            currentDir.addFiles(dupFile);
+        }
+        return dupFile;
+    }
+
+    public Directory duplicateDirectory(String dirName) {
+        Directory dupDir = currentDir.getDirByName(dirName).deepCopy();
+        if (dupDir == null) {
+            System.out.println("ERRO: Diretorio não encontrado.");
+        }
+        int copyCount = 0;
+        for(Directory dir : currentDir.getSubDirectories()){
+            if(dir.getName().equals(dirName)){
+                copyCount++;
+            }
+        }
+        if(copyCount > 0){
+            dupDir.setName(dupDir.getName() + "(" + copyCount + ")");
+            dupDir.setParent(currentDir);
+            currentDir.addSubDirectories(dupDir);
+        }
+        return dupDir;
+    }
 }

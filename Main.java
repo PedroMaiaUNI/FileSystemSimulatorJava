@@ -8,6 +8,11 @@ public class Main {
 
         journal.recovery(fs);
 
+        //zerar o clipboard foi mais uma opção que um bug
+        //não faz muito sentido pra mim isso ser salvo 
+        //se nem no ruindows isso acontece
+        fs.clipboardStatus = 0;
+
         printStartupMessage();
 
         while (true) {
@@ -24,20 +29,14 @@ public class Main {
                 case "fmk":
                     handleCreateFile(fs, argsPart, journal);
                     break;
-                case "fdl":
-                    handleDeleteFile(fs, argsPart, sc, journal);
-                    break;
-                case "frn":
-                    handleRenameFile(fs, argsPart, journal);
-                    break;
                 case "dmk":
                     handleCreateDirectory(fs, argsPart, journal);
                     break;
-                case "ddl":
-                    handleDeleteDirectory(fs, argsPart, sc, journal);
+                case "ren":
+                    handleRename(fs, argsPart, journal);
                     break;
-                case "drn":
-                    handleRenameDirectory(fs, argsPart, journal);
+                case "del":
+                    handleDelete(fs, argsPart, sc, journal);
                     break;
                 case "fwrite":
                     handleWriteFile(fs, argsPart, sc, journal);
@@ -45,38 +44,34 @@ public class Main {
                 case "fread":
                     handleReadFile(fs, argsPart);
                     break;
-                case "fcpy":
-                    handleCopyFile(fs, argsPart);
+                case "cpy":
+                    handleCopy(fs, argsPart, journal);
                     break;
-                case "fmv":
-                    handleCutFile(fs, argsPart);
+                case "mv":
+                    handleCut(fs, argsPart);
                     break;
-                case "dcpy":
-                    handleCopyDirectory(fs, argsPart);
+                case "paste":
+                    handlePaste(fs, sc, journal);
                     break;
-                case "dmv":
-                    handleCutDirectory(fs, argsPart);
-                    break;
-                case "fpaste":
-                    handlePasteFile(fs, journal);
-                    break;
-                case "dpaste":
-                    handlePasteDirectory(fs, journal);
+                case "dup":
+                    handleDuplicate(fs, argsPart, journal);
                     break;
                 case "list":
                     handleListDirectory(fs);
                     break;
                 case "go":
-                    handleChangeDirectory(fs, argsPart);
+                    handleChangeDirectory(fs, argsPart, journal);
                     break;
                 case "help":
                     printHelp();
                     break;
                 case "exit":
                     handleExit(journal, fs);
+                    journal.clear();
                     return;
                 case "exit!":
                     handleForceExit();
+                    journal.clear();
                     return;
                 default:
                     handleUnknownCommand();
@@ -108,22 +103,18 @@ public class Main {
         System.out.println("=== COMANDOS DISPONÍVEIS ===");
         System.out.println("  fmk <nome>             - Criar arquivo");
         System.out.println("  dmk <nome>             - Criar diretório");
-        System.out.println("  fdl <nome>             - Deletar arquivo (confirmação necessária)");
-        System.out.println("  ddl <nome>             - Deletar diretório (confirmação necessária)");
-        System.out.println("  frn <nome>             - Renomear arquivo");
-        System.out.println("  drn <nome>             - Renomear diretório");
+        System.out.println("  del <nome>             - Deletar arquivo ou diretório (confirmação necessária)");
+        System.out.println("  ren <nome>             - Renomear arquivo ou diretório");
         System.out.println("  fwrite <nome>          - Escrever no arquivo");
         System.out.println("  fread <nome>           - Ler conteúdo do arquivo");
-        System.out.println("  fcpy <nome>            - Copiar arquivo");
-        System.out.println("  fmv <nome>             - Recortar arquivo");
-        System.out.println("  fpaste                 - Colar arquivo");
-        System.out.println("  dcpy <nome>            - Copiar diretório");
-        System.out.println("  dmv <nome>             - Recortar diretório");
-        System.out.println("  dpaste                 - Colar diretório");
+        System.out.println("  cpy <nome>             - Copiar arquivo ou diretório");
+        System.out.println("  mv <nome>              - Recortar arquivo ou diretório");
+        System.out.println("  paste                  - Colar da área de transferência");
         System.out.println("  go <nome|..|path>      - Mudar de diretório");
         System.out.println("                           * Pode usar nome direto (ex: go pasta)");
         System.out.println("                           * '..' para subir");
-        System.out.println("                           * Ou caminho (ex: go pasta1/pasta2 ou go /pasta1/pasta2)");
+        System.out.println("                           * Ou path (ex: go pasta1/pasta2 ou go /pasta1/pasta2)");
+        System.out.println("                           * (ATENÇÃO: quando o path inicia com '/', é implicito que a barra é o root)");
         System.out.println("  list                   - Listar diretórios e arquivos atuais");
         System.out.println("  help                   - Mostrar comandos");
         System.out.println("  exit                   - Salvar e sair");
@@ -134,7 +125,7 @@ public class Main {
     }
 
     //Funções para tratamento de input:
-    //Preferi fazer desse jeito para deixar a função main mais limpa e fácil de ler.
+    //Preferi fazer desse jeito para deixar a função main mais limpa e fácil de ler
 
     private static void handleCreateFile(FileSystemSimulator fs, String fileName, Journal journal) {
         if (fileName.isEmpty()) {
@@ -143,8 +134,7 @@ public class Main {
         }
         
         if (fs.makeFile(fileName)) {
-            FileType file = fs.getCurrentDir().getFileByName(fileName);
-            journal.log("CREATE_FILE", fs.getAbsolutePath(file, fs.getCurrentDir()));
+            journal.log("CREATE_FILE", fileName);
         }
     }
 
@@ -153,114 +143,79 @@ public class Main {
             System.out.println("ERRO: Nome do diretório não pode estar vazio.");
             return;
         }
-        
         if (fs.makeDirectory(dirName)) {
-            Directory dir = fs.getCurrentDir().getDirByName(dirName);
-            journal.log("CREATE_DIR", fs.getAbsolutePath(dir));
+            journal.log("CREATE_DIR", dirName);
         }
     }
 
-    private static void handleDeleteFile(FileSystemSimulator fs, String fileName, Scanner sc, Journal journal) {
-        if (fileName.isEmpty()) {
-            System.out.println("ERRO: Nome do arquivo não pode estar vazio.");
-            return;
-        }
-        
-        if (!fs.fileExists(fileName)) {
-            System.out.println("ERRO: Arquivo não encontrado.");
+    private static void handleDelete(FileSystemSimulator fs, String name, Scanner sc, Journal journal) {
+        if (name.isEmpty()) {
+            System.out.println("ERRO: Nome não pode estar vazio.");
             return;
         }
 
-        System.out.println("Deseja realmente excluir o arquivo '" + fileName + "'? (s/n)");
-        if (confirmInput(sc)) {
-            FileType file = fs.getCurrentDir().getFileByName(fileName);
-            String filePath = fs.getAbsolutePath(file, fs.getCurrentDir());
-            if (fs.deleteFile(fileName)) {
-                journal.log("DELETE_FILE", filePath);
-                System.out.println("Arquivo excluído com sucesso.");
+        if (fs.fileExists(name)) {
+            System.out.println("Deseja realmente excluir o arquivo '" + name + "'? (s/n)");
+            if (confirmInput(sc)) {
+                if (fs.deleteFile(name)) {
+                    journal.log("DELETE_FILE", name);
+                    System.out.println("Arquivo excluído com sucesso.");
+                }
+            } else {
+                System.out.println("Operação cancelada.");
             }
-        } else {
-            System.out.println("Operação cancelada.");
-        }
-    }
 
-    private static void handleDeleteDirectory(FileSystemSimulator fs, String dirName, Scanner sc, Journal journal) {
-        if (dirName.isEmpty()) {
-            System.out.println("ERRO: Nome do diretório não pode estar vazio.");
-            return;
-        }
-        
-        Directory dir = fs.getCurrentDir().getDirByName(dirName);
-        if (dir == null) {
-            System.out.println("ERRO: Diretório não encontrado.");
-            return;
-        }
+        } else if (fs.dirExists(name)) {
+            Directory dir = fs.getCurrentDir().getDirByName(name);
+            int subDirs = dir.getSubDirectories().size();
+            int files = dir.getFiles().size();
+            System.out.println("Deseja realmente excluir o diretório '" + name + "'?");
+            System.out.println("Ele contém " + subDirs + " subdiretório(s) e " + files + " arquivo(s). (s/n)");
 
-        int subDirs = dir.getSubDirectories().size();
-        int files = dir.getFiles().size();
-        System.out.println("Deseja realmente excluir o diretório '" + dirName + "'?");
-        System.out.println("Ele contém " + subDirs + " subdiretório(s) e " + files + " arquivo(s). (s/n)");
-        
-        if (confirmInput(sc)) {
-            String dirPath = fs.getAbsolutePath(dir);
-            if (fs.deleteDirectory(dirName)) {
-                journal.log("DELETE_DIR", dirPath);
-                System.out.println("Diretório excluído com sucesso.");
+            if (confirmInput(sc)) {
+                if (fs.deleteDirectory(name)) {
+                    journal.log("DELETE_DIR", name);
+                    System.out.println("Diretório excluído com sucesso.");
+                }
+            } else {
+                System.out.println("Operação cancelada.");
             }
+
         } else {
-            System.out.println("Operação cancelada.");
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
         }
     }
 
-    private static void handleRenameFile(FileSystemSimulator fs, String args, Journal journal) {
+
+    private static void handleRename(FileSystemSimulator fs, String args, Journal journal) {
         String[] split = args.split("\\s+");
         if (split.length != 2) {
-            System.out.println("ERRO: Uso correto: frn <nomeAntigo> <nomeNovo>");
+            System.out.println("ERRO: Uso correto: ren <nomeAntigo> <nomeNovo>");
             return;
         }
-        
+
         String oldName = split[0];
         String newName = split[1];
-        
-        if (!fs.fileExists(oldName)) {
-            System.out.println("ERRO: Arquivo '" + oldName + "' não encontrado.");
-            return;
-        }
-        
-        FileType file = fs.getCurrentDir().getFileByName(oldName);
-        String oldPath = fs.getAbsolutePath(file, fs.getCurrentDir());
-        
-        if (fs.renameFile(oldName, newName)) {
-            String newPath = fs.getAbsolutePath(file, fs.getCurrentDir());
-            journal.log("RENAME_FILE", oldPath + " -> " + newPath);
-            System.out.println("Arquivo renomeado com sucesso.");
+
+        if (fs.fileExists(oldName)) {
+
+            if (fs.renameFile(oldName, newName)) {
+                journal.log("RENAME_FILE", oldName + " -> " + newName);
+                System.out.println("Arquivo renomeado com sucesso.");
+            }
+
+        } else if (fs.dirExists(oldName)) {
+
+            if (fs.renameDirectory(oldName, newName)) {
+                journal.log("RENAME_DIR", oldName + " -> " + newName);
+                System.out.println("Diretório renomeado com sucesso.");
+            }
+
+        } else {
+            System.out.println("ERRO: Arquivo ou diretório '" + oldName + "' não encontrado.");
         }
     }
 
-    private static void handleRenameDirectory(FileSystemSimulator fs, String args, Journal journal) {
-        String[] split = args.split("\\s+");
-        if (split.length != 2) {
-            System.out.println("ERRO: Uso correto: drn <nomeAntigo> <nomeNovo>");
-            return;
-        }
-        
-        String oldName = split[0];
-        String newName = split[1];
-        
-        if (!fs.dirExists(oldName)) {
-            System.out.println("ERRO: Diretório '" + oldName + "' não encontrado.");
-            return;
-        }
-        
-        Directory dir = fs.getCurrentDir().getDirByName(oldName);
-        String oldPath = fs.getAbsolutePath(dir);
-        
-        if (fs.renameDirectory(oldName, newName)) {
-            String newPath = fs.getAbsolutePath(dir);
-            journal.log("RENAME_DIR", oldPath + " -> " + newPath);
-            System.out.println("Diretório renomeado com sucesso.");
-        }
-    }
 
     private static void handleWriteFile(FileSystemSimulator fs, String fileName, Scanner sc, Journal journal) {
         if (fileName.isEmpty()) {
@@ -278,8 +233,7 @@ public class Main {
         String content = sc.nextLine();
         
         if (fs.writeFile(fileName, content)) {
-            FileType file = fs.getCurrentDir().getFileByName(fileName);
-            journal.log("WRITE_FILE", fs.getAbsolutePath(file, fs.getCurrentDir()) + " -> " + content);
+            journal.log("WRITE_FILE", fileName + " -> " + content);
             System.out.println("Conteúdo escrito com sucesso.");
         }
     }
@@ -292,57 +246,109 @@ public class Main {
         fs.readFile(fileName);
     }
 
-    private static void handleCopyFile(FileSystemSimulator fs, String fileName) {
-        if (fileName.isEmpty()) {
-            System.out.println("ERRO: Nome do arquivo não pode estar vazio.");
+    private static void handleCopy(FileSystemSimulator fs, String name, Journal journal) {
+        if (name.isEmpty()) {
+            System.out.println("ERRO: Nome não pode estar vazio.");
             return;
         }
-        fs.copyFile(fileName);
+
+        if (fs.fileExists(name)) {
+            fs.copyFile(name);
+            journal.log("COPY_FILE", name);
+            System.out.println("Arquivo '" + name + "' copiado para a área de transferência.");
+            return;
+        } else if (fs.dirExists(name)) {
+            fs.copyDirectory(name);
+            journal.log("COPY_DIR", name);
+            System.out.println("Diretório '" + name + "' copiado para a área de transferência.");
+            return;
+        } else {
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
+        }
     }
 
-    private static void handleCutFile(FileSystemSimulator fs, String fileName) {
-        if (fileName.isEmpty()) {
-            System.out.println("ERRO: Nome do arquivo não pode estar vazio.");
+    private static void handleCut(FileSystemSimulator fs, String name) {
+        if (name.isEmpty()) {
+            System.out.println("ERRO: Nome não pode estar vazio.");
             return;
         }
-        fs.cutFile(fileName);
+
+        if (fs.fileExists(name)) {
+            fs.cutFile(name);
+            System.out.println("Arquivo '" + name + "' recortado para a área de transferência.");
+        } else if (fs.dirExists(name)) {
+            fs.cutDirectory(name);
+            System.out.println("Diretório '" + name + "' recortado para a área de transferência.");
+        } else {
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
+        }
     }
 
-    private static void handleCopyDirectory(FileSystemSimulator fs, String dirName) {
-        if (dirName.isEmpty()) {
-            System.out.println("ERRO: Nome do diretório não pode estar vazio.");
+    private static void handlePaste(FileSystemSimulator fs, Scanner sc, Journal journal) {
+        if(fs.clipboardStatus == 1){
+            handlePasteFile(fs, sc, journal);
             return;
         }
-        fs.copyDirectory(dirName);
-    }
-
-    private static void handleCutDirectory(FileSystemSimulator fs, String dirName) {
-        if (dirName.isEmpty()) {
-            System.out.println("ERRO: Nome do diretório não pode estar vazio.");
-            return;
+        if(fs.clipboardStatus == 2){
+            handlePasteDirectory(fs, sc, journal);
         }
-        fs.cutDirectory(dirName);
+        else{
+            System.out.println("A área de transferência está vazia!");
+        }
     }
 
-    private static void handlePasteFile(FileSystemSimulator fs, Journal journal) {
+    private static void handlePasteFile(FileSystemSimulator fs, Scanner sc, Journal journal) {
+        String transferName = fs.getTransferFile().name;
+        if (fs.fileExists(transferName)) {
+                System.out.println("Já existe um arquivo chamado '" + transferName + "'. Deseja sobrescrever? (s/n)");
+            if (!confirmInput(sc)) {
+                System.out.println("Operação cancelada.");
+                return;
+            }
+            journal.log("DELETE_FILE", transferName);
+        }
         if (fs.pasteFile()) {
-            // Encontrar o arquivo que foi colado (último adicionado)
-            if (!fs.getCurrentDir().getFiles().isEmpty()) {
-                FileType lastFile = fs.getCurrentDir().getFiles().getFirst();
-                journal.log("CREATE_FILE", fs.getAbsolutePath(lastFile, fs.getCurrentDir()));
-                System.out.println("Arquivo colado com sucesso.");
-            }
+            journal.log("PASTE_FILE", transferName);
+            System.out.println("Arquivo colado com sucesso.");
         }
     }
 
-    private static void handlePasteDirectory(FileSystemSimulator fs, Journal journal) {
-        if (fs.pasteDirectory()) {
-            // Encontrar o diretório que foi colado (último adicionado)
-            if (!fs.getCurrentDir().getSubDirectories().isEmpty()) {
-                Directory lastDir = fs.getCurrentDir().getSubDirectories().getFirst();
-                journal.log("CREATE_DIR", fs.getAbsolutePath(lastDir));
-                System.out.println("Diretório colado com sucesso.");
+    private static void handlePasteDirectory(FileSystemSimulator fs,  Scanner sc, Journal journal) {
+        String transferName = fs.getTransferDir().getName();
+        if (fs.dirExists(transferName)) {
+            System.out.println("Já existe um diretório chamado '" + transferName + "'. Deseja sobrescrever? (s/n)");
+            if (!confirmInput(sc)) {
+                System.out.println("Operação cancelada.");
+                return;
             }
+            journal.log("DELETE_DIR", transferName);
+        }
+        if (fs.pasteDirectory()) {
+            journal.log("PASTE_DIR", transferName);
+            System.out.println("Diretório colado com sucesso.");
+        }
+    }
+
+    private static void handleDuplicate(FileSystemSimulator fs, String name, Journal journal) {
+        if (name.isEmpty()) {
+            System.out.println("ERRO: Nome não pode estar vazio.");
+            return;
+        }
+
+        if (fs.fileExists(name)) {
+            FileType duplicated = fs.duplicateFile(name);
+            if (duplicated != null) {
+                journal.log("DUPLICATE_FILE", duplicated.getName());
+                System.out.println("Arquivo duplicado como '" + duplicated.getName() + "'.");
+            }
+        } else if (fs.dirExists(name)) {
+            Directory duplicated = fs.duplicateDirectory(name);
+            if (duplicated != null) {
+                journal.log("DUPLICATE_DIR", duplicated.getName());
+                System.out.println("Diretório duplicado como '" + duplicated.getName() + "'.");
+            }
+        } else {
+            System.out.println("ERRO: Arquivo ou diretório '" + name + "' não encontrado.");
         }
     }
 
@@ -350,11 +356,12 @@ public class Main {
         fs.listDirectory();
     }
 
-    private static void handleChangeDirectory(FileSystemSimulator fs, String dirName) {
+    private static void handleChangeDirectory(FileSystemSimulator fs, String dirName, Journal journal) {
         if (dirName.isEmpty()) {
             System.out.println("ERRO: Nome do diretório não pode estar vazio.");
             return;
         }
+        journal.log("CHANGE_DIR", dirName);
         fs.changeDirectory(dirName);
     }
 
