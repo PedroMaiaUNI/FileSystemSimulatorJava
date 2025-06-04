@@ -10,6 +10,7 @@ public class FileSystemSimulator {
     private static final int MAX_SIZE = 500;
     private static final String SAVE_FILE = "filesystem.moe"; //maia official extension
 
+    //a funcionalidade tamanho foi implementada no ultimo dia, está sujeita a bugs
     private int currentSize = 0;
 
     public int clipboardStatus = 0;
@@ -98,6 +99,7 @@ public class FileSystemSimulator {
             System.out.println("ERRO: Caracteres inválidos ('/'. '\\', ou '..')");
             return false;
         }
+        //essa feature não foi muito testada, propensa a bugs
         int pathLength = getCurrentPath().length() + name.length() + 1; 
         if (pathLength > MAX_PATH_LENGTH) {
             System.out.println("ERRO: O caminho completo excede o limite de " + MAX_PATH_LENGTH + " caracteres.");
@@ -116,7 +118,7 @@ public class FileSystemSimulator {
             return false;
         }
         if(currentSize + 1 > MAX_SIZE){
-            System.out.println("ERRO: O sistema atingiu o limite de tamanho!");
+            System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre.");
             return false;
         }
         if (fileExists(fileName)) {
@@ -165,11 +167,6 @@ public class FileSystemSimulator {
         } else {
             System.out.println("ERRO: Não existe arquivo com esse nome");
         }
-    }
-
-    public void cutFile(String fileName){
-        copyFile(fileName);
-        deleteFile(fileName);
     }
 
     public boolean pasteFile(){
@@ -239,11 +236,6 @@ public class FileSystemSimulator {
         }
     }
 
-    public void cutDirectory(String dirName){
-        copyDirectory(dirName);
-        deleteDirectory(dirName);
-    }
-
     public boolean pasteDirectory() {
         if (transferDir != null) {
             String newName = transferDir.getName();
@@ -268,18 +260,20 @@ public class FileSystemSimulator {
     public void listDirectory() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-        System.out.println("----------------------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------------------");
         System.out.printf("%-10s | %-25s | %-10s | %-10s | %-20s\n", "", "NOME", "EXTENSÃO", "TAMANHO", "DATA DE CRIAÇÃO");
-        System.out.println("----------------------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------------------");
 
         for (Directory subDir : currentDir.getSubDirectories()) {
             System.out.printf("%-10s | %-25s | %-10s | %-10s | %-20s\n",
                 "[DIR]",
                 subDir.getName(),
                 "",
-                subDir.getSize(),
+                subDir.getSize() + "blocks",
                 subDir.getCreationDate().format(formatter));
         }
+
+        System.out.println("----------------------------------------------------------------------------------------");
 
         for (FileType file : currentDir.getFiles()) {
             String ext = file.getExtension();
@@ -287,11 +281,11 @@ public class FileSystemSimulator {
                  "[FILE]",
                 file.getMainName(),
                 ext,
-                file.getSize(),
+                file.getSize() + "blocks",
                 file.getCreationDate().format(formatter));
         }
 
-        System.out.println("----------------------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------------------");
 
         System.out.println("TAMANHO OCUPADO EM DISCO: ");
         System.out.println("[" + currentSize + "/" + MAX_SIZE + "]");
@@ -383,11 +377,11 @@ public class FileSystemSimulator {
     public boolean writeFile(String name, String content) {
         FileType fileToWrite = currentDir.getFileByName(name);
         if (fileToWrite != null) {
-            if(currentSize + content.length() > MAX_SIZE){
+            if(currentSize + content.length() - fileToWrite.getSize() + 1 > MAX_SIZE){
                 System.out.println("ERRO: Não foi possível concluir a operação por falta de espaço livre");
                 return false;
             }
-            currentSize += content.length();
+            currentSize += content.length() - fileToWrite.getSize() + 1;
             fileToWrite.setContent(content);
             return true;
         } else {
@@ -403,6 +397,16 @@ public class FileSystemSimulator {
         } else {
             System.out.println("Arquivo não encontrado. Lembre-se de incluir a extensão");
         }
+    }
+
+    //implementei pq é bem facil
+    public void cutFile(String fileName){
+        copyFile(fileName);
+        deleteFile(fileName);
+    }
+    public void cutDirectory(String dirName){
+        copyDirectory(dirName);
+        deleteDirectory(dirName);
     }
 
     //duplicar, para quando o usuario realmente quiser uma copia no mesmo diretorio

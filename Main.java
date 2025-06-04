@@ -5,14 +5,16 @@ public class Main {
         Journal journal = new Journal();
         FileSystemSimulator fs = new FileSystemSimulator();
         Scanner sc = new Scanner(System.in);
+        
+        fs.setFullSize();
 
         journal.recovery(fs);
+        System.out.println(fs.getCurrentSize());
 
         //zerar o clipboard foi mais uma opção que um bug
         //não faz muito sentido pra mim isso ser salvo 
         //se nem no ruindows isso acontece
         fs.clipboardStatus = 0;
-        fs.setFullSize();
 
         printStartupMessage();
 
@@ -39,10 +41,10 @@ public class Main {
                 case "del":
                     handleDelete(fs, argsPart, sc, journal);
                     break;
-                case "fwrite":
+                case "fw":
                     handleWriteFile(fs, argsPart, sc, journal);
                     break;
-                case "fread":
+                case "fr":
                     handleReadFile(fs, argsPart);
                     break;
                 case "cpy":
@@ -51,7 +53,7 @@ public class Main {
                 case "mv":
                     handleCut(fs, argsPart, journal);
                     break;
-                case "paste":
+                case "pst":
                     handlePaste(fs, sc, journal);
                     break;
                 case "dup":
@@ -60,7 +62,7 @@ public class Main {
                 case "list":
                     handleListDirectory(fs);
                     break;
-                case "go":
+                case "goto":
                     handleChangeDirectory(fs, argsPart, journal);
                     break;
                 case "help":
@@ -104,12 +106,12 @@ public class Main {
         System.out.println("  dmk <nome>             - Criar diretório");
         System.out.println("  del <nome>             - Deletar arquivo ou diretório (confirmação necessária)");
         System.out.println("  ren <nome>             - Renomear arquivo ou diretório");
-        System.out.println("  fwrite <nome>          - Escrever no arquivo");
-        System.out.println("  fread <nome>           - Ler conteúdo do arquivo");
+        System.out.println("  fw <nome>          - Escrever no arquivo");
+        System.out.println("  fr <nome>           - Ler conteúdo do arquivo");
         System.out.println("  cpy <nome>             - Copiar arquivo ou diretório");
         System.out.println("  mv <nome>              - Recortar arquivo ou diretório");
-        System.out.println("  paste                  - Colar da área de transferência");
-        System.out.println("  go <nome|..|path>      - Mudar de diretório");
+        System.out.println("  pst                  - Colar da área de transferência");
+        System.out.println("  goto <nome|..|path>      - Mudar de diretório");
         System.out.println("                           * Pode usar nome direto (ex: go pasta)");
         System.out.println("                           * '..' para subir");
         System.out.println("                           * Ou path (ex: go pasta1/pasta2 ou go /pasta1/pasta2)");
@@ -366,12 +368,10 @@ public class Main {
     private static void handleExit(Journal journal, FileSystemSimulator fs) {
         System.out.println("Salvando sistema...");
         journal.close();
-        journal.clear();
         fs.saveFileSystem();
     }
 
     private static void handleForceExit(Journal journal) {
-        journal.clear();
         System.out.println("Saindo sem salvar...");
     }
 
