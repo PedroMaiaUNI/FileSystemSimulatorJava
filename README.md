@@ -3,6 +3,8 @@
 
 ## 📜 Metodologia
 
+LINK DO REPOSITÓRIO: https://github.com/PedroMaiaUNI/FileSystemSimulatorJava
+
 O simulador foi desenvolvido utilizando a linguagem de programação **Java**. Seu funcionamento se dá por meio da execução de métodos que simulam operações típicas de sistemas de arquivos, como criação, deleção, cópia, escrita, leitura, entre outros.
 
 As operações são refletidas tanto na estrutura interna do simulador quanto em um **journal**, que registra todas as modificações, permitindo a recuperação dos dados em caso de falha.
