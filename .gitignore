@@ -1,2 +1,8 @@
 filesystem.moe
 journal.log
+Main.class
+Journal.class
+FileType.class
+FileSystemSimulator.class
+Entity.class
+Directory.class
