@@ -109,8 +109,7 @@ Também há um comando especial, **`CHECKPOINT`**, que marca que o programa foi 
 1. Clone o repositório:
 
 ```bash
-git clone https://github.com/seu-usuario/seu-repositorio.git
-cd seu-repositorio
+git clone https://github.com/PedroMaiaUNI/FileSystemSimulatorJava
 ```
 
 2. Compile o projeto:
